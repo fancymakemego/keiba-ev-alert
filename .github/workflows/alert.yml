@@ -1,0 +1,49 @@
+name: race-alert
+
+# 本命の起動は cron-job.org からの workflow_dispatch（午前の部 9:30／午後の部 12:30 JST）。
+# GitHub の schedule は数時間遅れることがあるので予備。遅れて動いても、発走済みのレースは見ないので害はない。
+on:
+  workflow_dispatch:
+    inputs:
+      part:
+        description: "am = 13:30 より前に発走するレース / pm = 13:30 以降"
+        required: true
+        default: am
+        type: choice
+        options: [am, pm]
+  schedule:
+    - cron: "30 0 * * *"   # 9:30 JST → am
+    - cron: "30 3 * * *"   # 12:30 JST → pm
+
+permissions:
+  contents: write
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    concurrency:
+      group: alert-${{ inputs.part || (github.event.schedule == '30 0 * * *' && 'am' || 'pm') }}
+      cancel-in-progress: false
+    env:
+      PART: ${{ inputs.part || (github.event.schedule == '30 0 * * *' && 'am' || 'pm') }}
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      EV_MIN: "1.0"
+      MIN_ODDS: "10"
+      MAX_ODDS: "0"
+      LEAD_MIN: "10"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -u alert.py --part "$PART"
+      - name: Save log
+        if: always()
+        run: |
+          git add log || true
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git commit -m "log: $(TZ=Asia/Tokyo date +%F) $PART"
+          for i in 1 2 3; do git pull --rebase && git push && break; sleep 5; done

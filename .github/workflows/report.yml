@@ -1,0 +1,19 @@
+name: weekly-report
+
+# 毎週月曜の朝に直近7日の成績を ntfy に送る（遅れても困らないので GitHub の schedule で十分）
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7 23 * * 0"   # 月曜 8:07 JST
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    env:
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python report.py --days 7 --notify
