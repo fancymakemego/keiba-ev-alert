@@ -1,0 +1,40 @@
+name: salon-search
+
+# サロン記事から馬名を探して ntfy に送る（手動起動のみ）。中身は Actions のログには出さない。
+on:
+  workflow_dispatch:
+    inputs:
+      search:
+        description: "記事タイトルの検索語（例: 2歳戦診断）"
+        required: true
+        default: 2歳戦診断
+      count:
+        description: "新しい順に何本読むか"
+        required: true
+        default: "4"
+      names:
+        description: "馬名（カンマ区切り）"
+        required: true
+      label:
+        description: "通知の見出し（任意）"
+        required: false
+        default: ""
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    env:
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      KAME_ID: ${{ secrets.KAME_ID }}
+      KAME_PW: ${{ secrets.KAME_PW }}
+      SEARCH: ${{ inputs.search }}
+      COUNT: ${{ inputs.count }}
+      NAMES: ${{ inputs.names }}
+      LABEL: ${{ inputs.label }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q cryptography
+      - run: python -u salon_search.py --search "$SEARCH" --count "$COUNT" --names "$NAMES" --label "$LABEL"

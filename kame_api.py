@@ -76,7 +76,7 @@ def find_article(op, date):
     raise KameError(f"{mo}/{d} の亀AI記事がまだ見つからない")
 
 
-def picks_for(date):
+def login():
     uid, pw = os.environ.get("KAME_ID"), os.environ.get("KAME_PW")
     if not uid or not pw:
         raise KameError("KAME_ID / KAME_PW が未設定")
@@ -86,6 +86,11 @@ def picks_for(date):
     if not token:
         raise KameError("ログイン画面の形式が変わった")
     _get(op, BASE + "/at", {"login": uid, "password": pw, "rurl": BASE, "token": token[1]})
+    return op
+
+
+def picks_for(date):
+    op = login()
     url = find_article(op, date)
     text = text_of(_get(op, url))
     if "続きを読むにはログインしてください" in text:
