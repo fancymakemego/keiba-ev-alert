@@ -91,8 +91,16 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--part", choices=["am", "pm", "all"], default="all")
     ap.add_argument("--date", help="YYYY-MM-DD（既定: 今日 JST）")
+    ap.add_argument("--check", action="store_true", help="ログイン・記事の読み取り・暗号化だけ試して終わる（通知しない）")
     a = ap.parse_args()
     date = a.date or now().strftime("%Y-%m-%d")
+    if a.check:
+        kame = kame_api.picks_for(date)
+        print(f"OK 亀AI {date}: {len(kame)} レース / 推奨 {sum(len(v['picks']) for v in kame.values())} 頭")
+        secure_log._f().decrypt(secure_log._f().encrypt(b"test"))
+        print("OK LOG_KEY")
+        print("OK NTFY_TOPIC" if os.environ.get("NTFY_TOPIC") else "NG NTFY_TOPIC 未設定")
+        return
 
     todo = []
     for r in fr_api.races(date):

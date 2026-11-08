@@ -6,11 +6,11 @@ on:
   workflow_dispatch:
     inputs:
       part:
-        description: "am = 13:30 より前に発走するレース / pm = 13:30 以降"
+        description: "am = 13:30 より前に発走するレース / pm = 13:30 以降 / check = 設定の確認だけ"
         required: true
         default: am
         type: choice
-        options: [am, pm]
+        options: [am, pm, check]
   schedule:
     - cron: "30 0 * * *"   # 9:30 JST → am
     - cron: "30 3 * * *"   # 12:30 JST → pm
@@ -38,9 +38,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -q cryptography
-      - run: python -u alert.py --part "$PART"
+      - run: |
+          if [ "$PART" = check ]; then python -u alert.py --check; else python -u alert.py --part "$PART"; fi
       - name: Save log
-        if: always()
+        if: always() && env.PART != 'check'
         run: |
           git add log || true
           if git diff --cached --quiet; then exit 0; fi
