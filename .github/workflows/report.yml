@@ -11,9 +11,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      LOG_KEY: ${{ secrets.LOG_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - run: pip install -q cryptography
       - run: python report.py --days 7 --notify

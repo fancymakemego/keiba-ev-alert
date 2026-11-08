@@ -28,15 +28,16 @@ jobs:
     env:
       PART: ${{ inputs.part || (github.event.schedule == '30 0 * * *' && 'am' || 'pm') }}
       NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
-      EV_MIN: "1.0"
-      MIN_ODDS: "10"
-      MAX_ODDS: "0"
+      KAME_ID: ${{ secrets.KAME_ID }}
+      KAME_PW: ${{ secrets.KAME_PW }}
+      LOG_KEY: ${{ secrets.LOG_KEY }}
       LEAD_MIN: "10"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - run: pip install -q cryptography
       - run: python -u alert.py --part "$PART"
       - name: Save log
         if: always()
