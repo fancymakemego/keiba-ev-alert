@@ -10,7 +10,11 @@ on:
         required: true
         default: am
         type: choice
-        options: [am, pm, check]
+        options: [am, pm, check, peek]
+      race:
+        description: "peek のときのレース（例: 東京2）"
+        required: false
+        default: ""
   schedule:
     - cron: "30 0 * * *"   # 9:30 JST → am
     - cron: "30 3 * * *"   # 12:30 JST → pm
@@ -32,6 +36,7 @@ jobs:
       KAME_PW: ${{ secrets.KAME_PW }}
       LOG_KEY: ${{ secrets.LOG_KEY }}
       LEAD_MIN: "10"
+      RACE: ${{ inputs.race }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -39,9 +44,11 @@ jobs:
           python-version: "3.12"
       - run: pip install -q cryptography
       - run: |
-          if [ "$PART" = check ]; then python -u alert.py --check; else python -u alert.py --part "$PART"; fi
+          if [ "$PART" = check ]; then python -u alert.py --check
+          elif [ "$PART" = peek ]; then python -u alert.py --peek "$RACE"
+          else python -u alert.py --part "$PART"; fi
       - name: Save log
-        if: always() && env.PART != 'check'
+        if: always() && env.PART != 'check' && env.PART != 'peek'
         run: |
           git add log || true
           if git diff --cached --quiet; then exit 0; fi

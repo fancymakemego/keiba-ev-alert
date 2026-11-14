@@ -91,9 +91,32 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--part", choices=["am", "pm", "all"], default="all")
     ap.add_argument("--date", help="YYYY-MM-DD（既定: 今日 JST）")
+    ap.add_argument("--peek", help="例: 東京2 … そのレースの亀AI推奨馬の判定を今のオッズで ntfy に送る")
     ap.add_argument("--check", action="store_true", help="ログイン・記事の読み取り・暗号化だけ試して終わる（通知しない）")
     a = ap.parse_args()
     date = a.date or now().strftime("%Y-%m-%d")
+    if a.peek:
+        import re
+        m = re.fullmatch(r"(\D+?)(\d{1,2})R?", a.peek.strip())
+        venue, no = m[1], int(m[2])
+        race = next(r for r in fr_api.races(date) if r["venue"] == venue and r["raceNumber"] == no)
+        kame = kame_api.picks_for(date).get((venue, no), {"picks": [], "hitrank": []})
+        rows = fr_api.evaluate(fr_api.entries(race["id"]))
+        fav = min(rows, key=lambda r: r["popularity"] or 99) if rows else None
+        lines = [f"{race['name']} {race['distance']} {race['startTime']}発走 / {now():%H:%M}時点"]
+        if fav:
+            lines.append(f"1番人気 {fav['number']} {fav['name']} {fav['odds']}倍 予測勝率{fav['p']*100:.1f}%")
+        lines.append(f"亀AI的中率順位: {', '.join(map(str, kame['hitrank'])) or 'なし'}")
+        js = judge(rows, kame)
+        if not js:
+            lines.append("亀AI推奨馬なし")
+        for j in js:
+            tag = "/".join(t for t, ok in (("A単勝", j["A"]), ("B複勝", j["B"])) if ok) or "-"
+            lines.append(f"[{tag}] {j['number']} {j['name']} {j['odds']}倍 {j['popularity']}人気 "
+                         f"勝率{j['p']*100:.1f}% ×オッズ={j['ev']*100:.0f}% 的中{j['hitrank'] or '-'}位")
+        notify(f"判定 {venue}{no}R", "\n".join(lines), fr_api.race_url(race["id"]), tags="mag", priority=3)
+        print("sent")
+        return
     if a.check:
         kame = kame_api.picks_for(date)
         print(f"OK 亀AI {date}: {len(kame)} レース / 推奨 {sum(len(v['picks']) for v in kame.values())} 頭")
