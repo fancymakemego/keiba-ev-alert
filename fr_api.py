@@ -4,6 +4,7 @@
 """
 import json
 import time
+import urllib.error
 import urllib.request
 
 BASE = "https://frontrunner-race.com"
@@ -16,6 +17,10 @@ def get(path, retries=3):
             req = urllib.request.Request(BASE + path, headers={"User-Agent": UA})
             with urllib.request.urlopen(req, timeout=20) as r:
                 return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code == 404 or i == retries - 1:
+                raise
+            time.sleep(5 * (i + 1))
         except Exception:
             if i == retries - 1:
                 raise
@@ -23,9 +28,15 @@ def get(path, retries=3):
 
 
 def races(date):
-    """date の全レース（会場名つき）。"""
+    """date の全レース（会場名つき）。開催の無い日は API が 404 を返すので空にする。"""
     out = []
-    for v in get(f"/api/races?date={date}").get("venues", []):
+    try:
+        day = get(f"/api/races?date={date}")
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return []
+        raise
+    for v in day.get("venues", []):
         for r in v.get("races", []):
             out.append({**r, "venue": v["name"]})
     return out
