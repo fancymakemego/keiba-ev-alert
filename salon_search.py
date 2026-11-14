@@ -20,13 +20,27 @@ def main():
     ap.add_argument("--count", type=int, default=4, help="新しい順に何本読むか")
     ap.add_argument("--names", required=True, help="馬名（カンマ区切り）")
     ap.add_argument("--label", default="", help="通知の見出し")
+    ap.add_argument("--since", default="", help="YYYY-MM-DD 以降の記事をすべて読む（指定時は --count を無視）")
     a = ap.parse_args()
     names = [n.strip() for n in a.names.split(",") if n.strip()]
 
     op = kame_api.login()
-    q = urllib.parse.urlencode({"search": a.search, "per_page": 20, "_fields": "link,title,date"})
-    posts = [p for p in json.loads(kame_api._get(op, f"{kame_api.BASE}/wp-json/wp/v2/posts?{q}"))
-             if a.search in html.unescape(p["title"]["rendered"])][: a.count]
+    posts, page = [], 1
+    while True:
+        q = urllib.parse.urlencode({"search": a.search, "per_page": 50, "page": page, "_fields": "link,title,date"})
+        try:
+            items = json.loads(kame_api._get(op, f"{kame_api.BASE}/wp-json/wp/v2/posts?{q}"))
+        except Exception:
+            break
+        if not items:
+            break
+        posts += [p for p in items if a.search in html.unescape(p["title"]["rendered"])
+                  and (not a.since or p["date"][:10] >= a.since)]
+        if not a.since or items[-1]["date"][:10] < a.since or page >= 10:
+            break
+        page += 1
+    if not a.since:
+        posts = posts[: a.count]
     found = []
     for p in posts:
         title = html.unescape(p["title"]["rendered"])

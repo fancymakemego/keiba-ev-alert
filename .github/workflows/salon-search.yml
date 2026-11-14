@@ -15,6 +15,10 @@ on:
       names:
         description: "馬名（カンマ区切り）"
         required: true
+      since:
+        description: "この日付以降の記事をすべて（例: 2026-06-01。空なら count 本）"
+        required: false
+        default: ""
       label:
         description: "通知の見出し（任意）"
         required: false
@@ -31,10 +35,11 @@ jobs:
       COUNT: ${{ inputs.count }}
       NAMES: ${{ inputs.names }}
       LABEL: ${{ inputs.label }}
+      SINCE: ${{ inputs.since }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install -q cryptography
-      - run: python -u salon_search.py --search "$SEARCH" --count "$COUNT" --names "$NAMES" --label "$LABEL"
+      - run: python -u salon_search.py --search "$SEARCH" --count "$COUNT" --names "$NAMES" --label "$LABEL" --since "$SINCE"
