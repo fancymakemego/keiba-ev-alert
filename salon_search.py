@@ -62,12 +62,12 @@ def main():
         posts = posts[: a.count]
 
     head = a.label or f"サロン検索「{a.search}」"
-    msgs = []
+    msgs, locked = [], 0
     for p in posts:
         title = html.unescape(p["title"]["rendered"])
         t = kame_api.text_of(kame_api._get(op, p["link"]))
         if "続きを読むにはログインしてください" in t:
-            raise SystemExit("ログインできなかった")
+            locked += 1  # 今の会員コースでは読めない記事（読める範囲だけ探す）
         t = t[t.find(title):t.find("新着記事/コンテンツ")] if title in t else t
         snips = merged_snippets(t, names)
         if snips:
@@ -76,7 +76,7 @@ def main():
             for i, part in enumerate(parts, 1):
                 msgs.append((f"{head}｜{title[:24]}" + (f" ({i}/{len(parts)})" if len(parts) > 1 else ""), part))
         time.sleep(1)
-    print(f"記事 {len(posts)} 本 / 該当記事 {len({m[0].split(' (')[0] for m in msgs})} 本 / 通知 {len(msgs)} 通")
+    print(f"記事 {len(posts)} 本（うち続きが読めない {locked} 本）/ 該当記事 {len({m[0].split(' (')[0] for m in msgs})} 本 / 通知 {len(msgs)} 通")
     if not msgs:
         notify(head, f"記事{len(posts)}本の中に見つかりませんでした。", tags="mag", priority=3)
         return
@@ -85,7 +85,7 @@ def main():
     for t, m in msgs[:MAX_MSGS]:
         notify(t, m, tags="mag", priority=2)
         time.sleep(1)
-    notify(f"{head}｜完了", f"記事{len(posts)}本を検索、{min(len(msgs), MAX_MSGS)}通送信しました。", tags="white_check_mark", priority=2)
+    notify(f"{head}｜完了", f"記事{len(posts)}本を検索（うち{locked}本は会員コース外で冒頭のみ）、{min(len(msgs), MAX_MSGS)}通送信しました。", tags="white_check_mark", priority=2)
 
 
 if __name__ == "__main__":
